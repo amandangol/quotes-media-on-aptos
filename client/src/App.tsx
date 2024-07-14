@@ -11,7 +11,7 @@ const { Header, Content, Footer } = Layout;
 const { Title, Text } = Typography;
 
 const provider = new Provider(Network.TESTNET);
-const moduleAddress = "0x1081f1c161922255c6f109c53e6ce73c9d6bc7244febc298bb544c67368fa05e";
+const moduleAddress = "0x62d96c7a6d1a927fa30a811c68f950eb021331aeca380a4c9a53c6e41b6575de";
 
 interface Quote {
   id: string;
@@ -30,12 +30,6 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
-    if (account) {
-      initializeQuotes();
-      fetchQuotes();
-    }
-  }, [account]);
-  useEffect(() => {
     console.log("Current quotes state:", quotes);
   }, [quotes]);
 
@@ -43,7 +37,6 @@ const App: React.FC = () => {
     if (!account) return;
   
     try {
-      setLoading(true);
       const payload: Types.TransactionPayload = {
         type: "entry_function_payload",
         function: `${moduleAddress}::Quotes::initialize`,
@@ -52,77 +45,74 @@ const App: React.FC = () => {
       };
   
       const response = await signAndSubmitTransaction(payload);
-      console.log("Initialize transaction submitted:", response);
       await provider.waitForTransaction(response.hash);
-      console.log("Initialize transaction confirmed");
-      message.success("Quotes initialized successfully!");
-      
-      // Check if the resource exists after initialization
-      await checkQuotesResourceExists();
+      console.log("Quotes initialized");
     } catch (error) {
       console.error("Error initializing quotes:", error);
-      if (error instanceof Error) {
-        message.error(`Failed to initialize quotes: ${error.message}`);
-      } else {
-        message.error("Failed to initialize quotes. It might already be initialized.");
-      }
-    } finally {
-      setLoading(false);
+      // The initialization might fail if it's already been done, which is fine
+      // We can still try to fetch quotes even if initialization fails
     }
   };
+  
+  // In your useEffect or wallet connection handler
+  useEffect(() => {
+    if (account) {
+      initializeQuotes().then(() => fetchAllQuotes());
+    }
+  }, [account]);
 
-  const fetchQuotes = async () => {
+  const fetchAllQuotes = async () => {
     if (!account) return;
   
     try {
       setLoading(true);
-      console.log("Fetching quotes for address:", account.address);
+      console.log("Fetching all quotes for address:", account.address);
       
       const result = await provider.view({
-        function: `${moduleAddress}::Quotes::get_quotes`,
+        function: `${moduleAddress}::Quotes::get_all_quotes`,
         type_arguments: [],
         arguments: [account.address],
       });
   
-      console.log("Raw result from get_quotes:", JSON.stringify(result, null, 2));
+      console.log("Raw result from get_all_quotes:", JSON.stringify(result, null, 2));
+      console.log("Type of result:", typeof result);
+      console.log("Is array:", Array.isArray(result));
   
-      if (Array.isArray(result) && result.length > 0 && Array.isArray(result[0])) {
-        const formattedQuotes = result[0].map((quote: any) => {
-          console.log("Processing quote:", JSON.stringify(quote, null, 2));
-          
-          let created_at;
-          try {
-            const timestamp = quote.created_at ? parseInt(quote.created_at) : null;
-            created_at = isNaN(timestamp!) ? new Date().toISOString() : new Date(timestamp! * 1000).toISOString();
-          } catch (error) {
-            console.error("Error parsing timestamp:", error);
-            created_at = new Date().toISOString();
+      if (Array.isArray(result) && result.length > 0) {
+        console.log("Result is an array with length:", result.length);
+        console.log("First item in array:", JSON.stringify(result[0], null, 2));
+  
+        const formattedQuotes: Quote[] = result.flatMap((item: any) => {
+          if (Array.isArray(item)) {
+            return item.map((quote: any, index: number): Quote => {
+              console.log(`Processing nested quote ${index}:`, JSON.stringify(quote, null, 2));
+              return {
+                id: quote.id?.toString() ?? `unknown_${index}`,
+                content: quote.content ?? 'No content',
+                author: quote.author ?? 'Unknown author',
+                created_at: quote.created_at 
+                  ? new Date(Number(quote.created_at) * 1000).toISOString()
+                  : new Date().toISOString(),
+                shared: Boolean(quote.shared),
+                likes: Number(quote.likes ?? 0),
+                ownerId: quote.owner ?? 'Unknown owner',
+              };
+            });
+          } else {
+            console.log("Unexpected item structure:", JSON.stringify(item, null, 2));
+            return [];
           }
-  
-          return {
-            id: quote.id.toString(),
-            content: quote.content,
-            author: quote.author,
-            created_at,
-            shared: Boolean(quote.shared),
-            likes: Number(quote.likes),
-            ownerId: account.address,  // This is correct as we're fetching the current user's quotes
-          };
         });
         
-        console.log("Formatted quotes:", formattedQuotes);
+        console.log("Formatted quotes:", JSON.stringify(formattedQuotes, null, 2));
         setQuotes(formattedQuotes);
       } else {
-        console.error("Unexpected result format:", result);
-        message.error("Unexpected data format received from the blockchain");
+        console.log("Result is not a non-empty array:", result);
+        setQuotes([]);
       }
     } catch (error) {
       console.error("Error fetching quotes:", error);
-      if (error instanceof Error) {
-        message.error(`Failed to fetch quotes: ${error.message}`);
-      } else {
-        message.error("Failed to fetch quotes. Please try again.");
-      }
+      message.error("Failed to fetch quotes. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -130,7 +120,7 @@ const App: React.FC = () => {
   
   const likeQuote = async (quoteOwnerId: string, quoteId: string) => {
     if (!account) return;
-  
+
     try {
       setLoading(true);
       const payload: Types.TransactionPayload = {
@@ -139,11 +129,11 @@ const App: React.FC = () => {
         type_arguments: [],
         arguments: [quoteOwnerId, quoteId],
       };
-  
+
       const response = await signAndSubmitTransaction(payload);
       await provider.waitForTransaction(response.hash);
       message.success("Quote liked successfully!");
-      fetchQuotes();  // Refresh quotes after liking
+      fetchAllQuotes();  // Refresh all quotes after liking
     } catch (error) {
       console.error("Error liking quote:", error);
       message.error("Failed to like quote. Please try again.");
@@ -199,7 +189,7 @@ const App: React.FC = () => {
   
     try {
       setLoading(true);
-      console.log("Adding quote:", randomQuote); // Debug log
+      console.log("Adding quote:", randomQuote);
   
       const payload: Types.TransactionPayload = {
         type: "entry_function_payload",
@@ -208,13 +198,13 @@ const App: React.FC = () => {
         arguments: [randomQuote.content, randomQuote.author],
       };
   
-      console.log("Payload:", payload); // Debug log
+      console.log("Payload:", payload);
   
       const response = await signAndSubmitTransaction(payload);
       await provider.waitForTransaction(response.hash);
       message.success("Quote added successfully!");
       setRandomQuote(null);
-      fetchQuotes(); // Fetch quotes after adding
+      await fetchAllQuotes(); // Fetch quotes after adding
     } catch (error) {
       console.error("Error adding quote:", error);
       message.error("Failed to add quote. Please try again.");
@@ -222,6 +212,7 @@ const App: React.FC = () => {
       setLoading(false);
     }
   };
+
   const shareQuote = async (quoteId: string) => {
     if (!account) return;
 
@@ -237,7 +228,7 @@ const App: React.FC = () => {
       const response = await signAndSubmitTransaction(payload);
       await provider.waitForTransaction(response.hash);
       message.success("Quote shared successfully!");
-      fetchQuotes();
+      fetchAllQuotes();
     } catch (error) {
       console.error("Error sharing quote:", error);
       message.error("Failed to share quote. Please try again.");
@@ -246,14 +237,9 @@ const App: React.FC = () => {
     }
   };
 
-
-
   const manualRefresh = () => {
-    fetchQuotes();
+    fetchAllQuotes();
   };
-  
-  // Add this button in your JSX, perhaps next to the "Get Random Quote" button
-  <Button onClick={manualRefresh}>Refresh Quotes</Button>
 
   const getShareableLink = (quoteId: string) => {
     return `${window.location.origin}/quote/${account?.address}/${quoteId}`;
@@ -298,7 +284,7 @@ const App: React.FC = () => {
               </Card>
             </Col>
             <Col xs={24} md={12}>
-              <Card title="Actions" extra={<Button type="primary" icon={<ReloadOutlined />} onClick={fetchQuotes}>Refresh Quotes</Button>}>
+              <Card title="Actions" extra={<Button type="primary" icon={<ReloadOutlined />} onClick={manualRefresh}>Refresh Quotes</Button>}>
                 <Button onClick={checkQuotesResourceExists} style={{ marginRight: '10px' }}>Check Quotes Resource</Button>
                 <Button onClick={initializeQuotes}>Initialize Quotes</Button>
               </Card>
@@ -312,12 +298,11 @@ const App: React.FC = () => {
                 <List.Item
                   actions={[
                     <Button
-          icon={<LikeOutlined />}
-          onClick={() => likeQuote(quote.ownerId, quote.id)}
-          disabled={account?.address === quote.ownerId}
-        >
-          Like ({quote.likes})
-        </Button>,
+                      icon={<LikeOutlined />}
+                      onClick={() => likeQuote(quote.ownerId, quote.id)}
+                    >
+                      Like ({quote.likes})
+                    </Button>,
                     <Button 
                       type={quote.shared ? 'default' : 'primary'}
                       icon={<ShareAltOutlined />}
@@ -336,14 +321,9 @@ const App: React.FC = () => {
                       >
                         Copy Link
                       </Button>
-                      
                     )
-                    
                   ]}
-                  
                 >
-                  
-                  
                   <List.Item.Meta
                     title={<Text strong>"{quote.content}"</Text>}
                     description={
@@ -351,13 +331,13 @@ const App: React.FC = () => {
                         <Text italic>- {quote.author}</Text>
                         <br />
                         <Text type="secondary">Added at: {new Date(quote.created_at).toLocaleString()}</Text>
+                        <br />
+                        <Text type="secondary">Owner: {quote.ownerId}</Text>
                       </>
                     }
                   />
                 </List.Item>
-                
               )}
-              
             />
           </Card>
         </Spin>
