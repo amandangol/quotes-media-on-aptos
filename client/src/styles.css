@@ -1,23 +1,80 @@
 .layout {
-    min-height: 100vh;
-  }
-  
-  .header {
-    padding: 0 20px;
-  }
-  
-  .content {
-    padding: 24px;
-    background: #f0f2f5;
-  }
-  
-  .ant-card {
-    box-shadow: 0 1px 2px -2px rgba(0, 0, 0, 0.16), 0 3px 6px 0 rgba(0, 0, 0, 0.12), 0 5px 12px 4px rgba(0, 0, 0, 0.09);
-  }
-  
-  .ant-list-item {
-    background: white;
-    margin-bottom: 8px;
-    padding: 16px;
-    border-radius: 2px;
-  }
+  min-height: 100vh;
+}
+
+.header {
+  background: #1890ff;
+  padding: 0 20px;
+}
+
+.header-title {
+  color: white !important;
+  margin: 0 !important;
+}
+
+.content {
+  padding: 20px;
+  background: #f0f2f5;
+}
+
+.site-layout-content {
+  background: #fff;
+  padding: 24px;
+  min-height: 280px;
+}
+
+.quote-actions {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+
+.quote-card {
+  flex: 1;
+}
+
+.random-quote-card {
+  background: #e6f7ff;
+}
+
+.custom-quote-card {
+  background: #fff1f0;
+}
+
+.quote-search-card {
+  margin-bottom: 20px;
+  background: #f6ffed;
+}
+
+.quote-list-card {
+  background: #f9f0ff;
+}
+
+.custom-quote-input,
+.search-input {
+  margin-bottom: 10px;
+}
+
+.add-quote-button,
+.add-custom-quote-button,
+.refresh-button {
+  margin-top: 10px;
+}
+
+.quote-list-item {
+  background: white;
+  margin-bottom: 10px;
+  padding: 10px;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.quote-action-button {
+  margin-right: 8px;
+}
+
+.footer {
+  text-align: center;
+  background: #001529;
+  color: white;
+}
