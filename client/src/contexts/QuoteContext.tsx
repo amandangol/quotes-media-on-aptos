@@ -2,6 +2,8 @@ import React, { createContext, useState, useContext, useEffect } from 'react';
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Network, Provider, Types } from "aptos";
 import { message } from 'antd';
+import { useWalletStatus } from '../components/useWalletStatus';
+
 
 const provider = new Provider(Network.TESTNET);
 const moduleAddress = "0x3616a9d7de3093cf1f0907b1281e7f4f41bf4dd8c538573673a332366bb5c260";
@@ -34,6 +36,7 @@ interface QuoteContextType {
   deleteQuote: (quoteId: string) => void;
   clearSearch: () => void;
   initializeQuotes: () => Promise<void>;
+  initializationAttempted: boolean;
 
 }
 
@@ -48,7 +51,10 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [searchAddress, setSearchAddress] = useState<string>('');
   const [likedQuotes, setLikedQuotes] = useState<Set<string>>(new Set());
   const [deletedQuoteIds, setDeletedQuoteIds] = useState<Set<string>>(new Set());
+  const { isConnected, isTestnet } = useWalletStatus();
+  const [initializationAttempted, setInitializationAttempted] = useState<boolean>(false);
 
+  
   useEffect(() => {
     if (account) {
       fetchQuotes();
@@ -61,13 +67,13 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       await fetchQuotes(account.address);
     }
   };
-
-  const initializeQuotes = async () => {
-    if (!account) {
-      message.error("Please connect your wallet first.");
-      return;
+  useEffect(() => {
+    if (account && !initializationAttempted) {
+      initializeQuotesAutomatically();
     }
-  
+  }, [account, initializationAttempted]);
+  const initializeQuotesAutomatically = async () => {
+    setInitializationAttempted(true);
     try {
       setLoading(true);
       const payload: Types.TransactionPayload = {
@@ -79,18 +85,27 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   
       const response = await signAndSubmitTransaction(payload);
       await provider.waitForTransaction(response.hash);
-      message.success("Quote system initialized successfully!");
+      console.log("Quote system initialized successfully!");
       await fetchQuotes();
     } catch (error) {
       console.error("Error initializing quotes:", error);
       if (error instanceof Error && error.message.includes("already exists")) {
-        message.info("Quote system is already initialized.");
+        console.log("Quote system is already initialized.");
       } else {
-        message.error("Failed to initialize quote system. Please try again.");
+        console.error("Failed to initialize quote system:", error);
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const initializeQuotes = async () => {
+    if (!account) {
+      message.error("Please connect your wallet first.");
+      return;
+    }
+  
+    await initializeQuotesAutomatically();
   };
 
   const fetchQuotes = async (address: string = '') => {
@@ -284,7 +299,8 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setSearchAddress,
       deleteQuote,
       clearSearch,
-      initializeQuotes
+      initializationAttempted,
+      initializeQuotes,
     }}>
       {children}
     </QuoteContext.Provider>

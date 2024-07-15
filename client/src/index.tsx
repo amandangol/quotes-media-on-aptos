@@ -5,6 +5,8 @@ import ReactDOM from "react-dom/client";
 import { BrowserRouter } from 'react-router-dom';
 import App from "./App";
 import reportWebVitals from "./reportWebVitals";
+import { WalletStatusProvider } from './components/WalletStatusProvider';
+
 
 const wallets = [new PetraWallet()];
 
@@ -13,6 +15,7 @@ root.render(
   <React.StrictMode>
     <AptosWalletAdapterProvider plugins={wallets} autoConnect={true}>
       <BrowserRouter>
+      
         <App />
       </BrowserRouter>
     </AptosWalletAdapterProvider>
