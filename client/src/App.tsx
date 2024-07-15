@@ -1,6 +1,5 @@
 import React from 'react';
 import { Layout, Space } from 'antd';
-import { WalletSelector } from "@aptos-labs/wallet-adapter-ant-design";
 import Header from './components/Header';
 import RandomQuote from './components/RandomQuote';
 import CustomQuote from './components/CustomQuote';

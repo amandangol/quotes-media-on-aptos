@@ -99,27 +99,17 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     try {
       setLoading(true);
       console.log("Fetching quotes for address:", address || account.address);
-
-      // try {
-      //   const initializePayload: Types.TransactionPayload = {
-      //     type: "entry_function_payload",
-      //     function: `${moduleAddress}::Quotes::initialize`,
-      //     type_arguments: [],
-      //     arguments: [],
-      //   };
-      //   const response = await signAndSubmitTransaction(initializePayload);
-      //   // Wait for transaction to be confirmed
-      //   await provider.waitForTransaction(response.hash);
-      // } catch (initError) {
-      //   // If initialization fails, it's likely because the resource already exists
-      //   console.log("Initialization skipped or failed:", initError);
-      // }
+      // Validate the address before making the call
+    let validAddress = address || account.address;
+    if (!validAddress.startsWith('0x') || validAddress.length !== 66) {
+      throw new Error('Invalid address format');
+    }
       
-      const result = await provider.view({
-        function: `${moduleAddress}::Quotes::get_all_quotes`,
-        type_arguments: [],
-        arguments: [address || account.address],
-      });
+    const result = await provider.view({
+      function: `${moduleAddress}::Quotes::get_all_quotes`,
+      type_arguments: [],
+      arguments: [validAddress],
+    });
   
       console.log("Raw result from blockchain:", JSON.stringify(result, null, 2));
   
@@ -165,20 +155,25 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }
       }
     } catch (error) {
-      console.error("Error fetching quotes:", error);
-      if (error instanceof Error) {
-        if (error.message.includes("ABORTED")) {
-          setQuotes([]);
-          message.info("There's no quotes available for this address");
-        } else {
-          message.error("Failed to fetch quotes. Please try again.");
-        }
+    console.error("Error fetching quotes:", error);
+    if (error instanceof Error) {
+      if (error.message.includes("ABORTED")) {
+        setQuotes([]);
+        message.info("There's no quotes available for this address");
+      } else if (error.message.includes("Invalid address format")) {
+        message.error("Invalid address format. Please check the address and try again.");
+      } else if (error.message.includes("Invalid account address")) {
+        message.error("Invalid account address. Please check the address and try again.");
       } else {
-        message.error("An unknown error occurred.");
+        message.error("Failed to fetch quotes. Please try again.");
       }
-    } finally {
-      setLoading(false);
+    } else {
+      message.error("An unknown error occurred.");
     }
+    setQuotes([]);
+  } finally {
+    setLoading(false);
+  }
   };
 
   const toggleLikeQuote = async (quoteOwnerId: string, quoteId: string) => {

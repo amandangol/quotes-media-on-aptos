@@ -58,46 +58,6 @@ module 0x3616a9d7de3093cf1f0907b1281e7f4f41bf4dd8c538573673a332366bb5c260::Quote
     }
 }
 
-    public entry fun like_quote(account: &signer, quote_owner: address, quote_id: u64) acquires Quotes {
-        let liker_address = signer::address_of(account);
-        
-        let quotes = borrow_global_mut<Quotes>(quote_owner);
-
-        assert!(table::contains(&quotes.quote_list, quote_id), E_QUOTE_DOES_NOT_EXIST);
-
-        if (!table::contains(&quotes.likes, quote_id)) {
-            table::add(&mut quotes.likes, quote_id, table::new());
-        };
-
-        let quote_likes = table::borrow_mut(&mut quotes.likes, quote_id);
-
-        if (!table::contains(quote_likes, liker_address)) {
-            table::add(quote_likes, liker_address, true);
-            let quote = table::borrow_mut(&mut quotes.quote_list, quote_id);
-            quote.likes = quote.likes + 1;
-        }
-    }
-
-    public entry fun unlike_quote(account: &signer, quote_owner: address, quote_id: u64) acquires Quotes {
-        let unliker_address = signer::address_of(account);
-        
-        let quotes = borrow_global_mut<Quotes>(quote_owner);
-
-        assert!(table::contains(&quotes.quote_list, quote_id), E_QUOTE_DOES_NOT_EXIST);
-
-        if (table::contains(&quotes.likes, quote_id)) {
-            let quote_likes = table::borrow_mut(&mut quotes.likes, quote_id);
-            
-            if (table::contains(quote_likes, unliker_address)) {
-                table::remove(quote_likes, unliker_address);
-                
-                let quote = table::borrow_mut(&mut quotes.quote_list, quote_id);
-                if (quote.likes > 0) {
-                    quote.likes = quote.likes - 1;
-                }
-            };
-        };
-    }
 
    #[view]
     public fun get_all_quotes(address: address): vector<Quote> acquires Quotes {

@@ -6,7 +6,7 @@ import { useQuoteContext } from '../contexts/QuoteContext';
 const { Text } = Typography;
 
 const QuoteList: React.FC = () => {
-  const { quotes, searchAddress, likedQuotes, toggleLikeQuote, deleteQuote, account } = useQuoteContext();
+  const { quotes, searchAddress, toggleLikeQuote, deleteQuote, account } = useQuoteContext();
 
   return (
     <Card 
