@@ -30,6 +30,7 @@ const CustomQuote: React.FC = () => {
           likes: 0,
           owner: account!.address,
           is_custom: true,
+          liked_by: [],
         }, true)}
         disabled={!account || !customQuote.content || !customQuote.author}
         className="add-custom-quote-button"

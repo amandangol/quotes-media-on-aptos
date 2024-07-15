@@ -4,7 +4,7 @@ import { Network, Provider, Types } from "aptos";
 import { message } from 'antd';
 
 const provider = new Provider(Network.TESTNET);
-const moduleAddress = "0x34d6b6437bfca564420f3d609e66dc3e4dc625fc1a390efdd55abc1940177819";
+const moduleAddress = "0x3616a9d7de3093cf1f0907b1281e7f4f41bf4dd8c538573673a332366bb5c260";
 
 interface Quote {
   id: string;
@@ -14,6 +14,7 @@ interface Quote {
   likes: number;
   owner: string;
   is_custom: boolean;
+  liked_by: string[]; 
 }
 
 interface QuoteContextType {
@@ -31,6 +32,9 @@ interface QuoteContextType {
   setCustomQuote: React.Dispatch<React.SetStateAction<{ content: string; author: string }>>;
   setSearchAddress: React.Dispatch<React.SetStateAction<string>>;
   deleteQuote: (quoteId: string) => void;
+  clearSearch: () => void;
+  initializeQuotes: () => Promise<void>;
+
 }
 
 const QuoteContext = createContext<QuoteContextType | undefined>(undefined);
@@ -51,12 +55,65 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
   }, [account]);
 
+  const clearSearch = async () => {
+    setSearchAddress('');
+    if (account) {
+      await fetchQuotes(account.address);
+    }
+  };
+
+  const initializeQuotes = async () => {
+    if (!account) {
+      message.error("Please connect your wallet first.");
+      return;
+    }
+  
+    try {
+      setLoading(true);
+      const payload: Types.TransactionPayload = {
+        type: "entry_function_payload",
+        function: `${moduleAddress}::Quotes::initialize`,
+        type_arguments: [],
+        arguments: [],
+      };
+  
+      const response = await signAndSubmitTransaction(payload);
+      await provider.waitForTransaction(response.hash);
+      message.success("Quote system initialized successfully!");
+      await fetchQuotes();
+    } catch (error) {
+      console.error("Error initializing quotes:", error);
+      if (error instanceof Error && error.message.includes("already exists")) {
+        message.info("Quote system is already initialized.");
+      } else {
+        message.error("Failed to initialize quote system. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const fetchQuotes = async (address: string = '') => {
     if (!account) return;
   
     try {
       setLoading(true);
       console.log("Fetching quotes for address:", address || account.address);
+
+      // try {
+      //   const initializePayload: Types.TransactionPayload = {
+      //     type: "entry_function_payload",
+      //     function: `${moduleAddress}::Quotes::initialize`,
+      //     type_arguments: [],
+      //     arguments: [],
+      //   };
+      //   const response = await signAndSubmitTransaction(initializePayload);
+      //   // Wait for transaction to be confirmed
+      //   await provider.waitForTransaction(response.hash);
+      // } catch (initError) {
+      //   // If initialization fails, it's likely because the resource already exists
+      //   console.log("Initialization skipped or failed:", initError);
+      // }
       
       const result = await provider.view({
         function: `${moduleAddress}::Quotes::get_all_quotes`,
@@ -78,6 +135,7 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
             likes: Number(quoteData.likes),
             owner: quoteData.owner,
             is_custom: Boolean(quoteData.is_custom),
+            liked_by: quoteData.liked_by || [],
           }));
         
         console.log("Formatted quotes:", JSON.stringify(formattedQuotes, null, 2));
@@ -138,7 +196,7 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       const response = await signAndSubmitTransaction(payload);
       await provider.waitForTransaction(response.hash);
       message.success("Quote like toggled successfully!");
-      fetchQuotes(searchAddress || account.address);
+      await fetchQuotes(searchAddress || account.address);
     } catch (error) {
       console.error("Error toggling quote like:", error);
       message.error("Failed to toggle quote like. Please try again.");
@@ -196,6 +254,7 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         likes: 0,
         owner: account!.address,
         is_custom: false,
+        liked_by: [],
       });
     } catch (error) {
       console.error("Error fetching random quote:", error);
@@ -229,6 +288,8 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       setCustomQuote,
       setSearchAddress,
       deleteQuote,
+      clearSearch,
+      initializeQuotes
     }}>
       {children}
     </QuoteContext.Provider>
