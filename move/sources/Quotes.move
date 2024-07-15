@@ -1,4 +1,4 @@
-module 0x34d6b6437bfca564420f3d609e66dc3e4dc625fc1a390efdd55abc1940177819::Quotes {
+module 0x7b1a9d04299e5dbfa7a67b77dcbf3f8f28f9ff60198bbfc1b2afcd70b63d7977::Quotes {
     use std::signer;
     use std::string::String;
     use aptos_std::table::{Self, Table};
@@ -37,21 +37,85 @@ module 0x34d6b6437bfca564420f3d609e66dc3e4dc625fc1a390efdd55abc1940177819::Quote
         };
     }
 
-   #[view]
-public fun get_all_quotes(address: address): vector<Quote> acquires Quotes {
-    assert!(exists<Quotes>(address), 0);
-    let quotes = borrow_global<Quotes>(address);
-    let result = vector::empty<Quote>();
-    let i = 0;
-    while (i < quotes.next_id) {
-        if (table::contains(&quotes.quote_list, i)) {
-            let quote = table::borrow(&quotes.quote_list, i);
-            vector::push_back(&mut result, *quote);
+    public entry fun toggle_like_quote(account: &signer, quote_owner: address, quote_id: u64) acquires Quotes {
+        let liker_address = signer::address_of(account);
+        
+        let quotes = borrow_global_mut<Quotes>(quote_owner);
+
+        assert!(table::contains(&quotes.quote_list, quote_id), E_QUOTE_DOES_NOT_EXIST);
+
+        if (!table::contains(&quotes.likes, quote_id)) {
+            table::add(&mut quotes.likes, quote_id, table::new());
         };
-        i = i + 1;
-    };
-    result
-}
+
+        let quote_likes = table::borrow_mut(&mut quotes.likes, quote_id);
+        let quote = table::borrow_mut(&mut quotes.quote_list, quote_id);
+
+        if (table::contains(quote_likes, liker_address)) {
+            table::remove(quote_likes, liker_address);
+            quote.likes = quote.likes - 1;
+        } else {
+            table::add(quote_likes, liker_address, true);
+            quote.likes = quote.likes + 1;
+        }
+    }
+
+    public entry fun like_quote(account: &signer, quote_owner: address, quote_id: u64) acquires Quotes {
+        let liker_address = signer::address_of(account);
+        
+        let quotes = borrow_global_mut<Quotes>(quote_owner);
+
+        assert!(table::contains(&quotes.quote_list, quote_id), E_QUOTE_DOES_NOT_EXIST);
+
+        if (!table::contains(&quotes.likes, quote_id)) {
+            table::add(&mut quotes.likes, quote_id, table::new());
+        };
+
+        let quote_likes = table::borrow_mut(&mut quotes.likes, quote_id);
+
+        if (!table::contains(quote_likes, liker_address)) {
+            table::add(quote_likes, liker_address, true);
+            let quote = table::borrow_mut(&mut quotes.quote_list, quote_id);
+            quote.likes = quote.likes + 1;
+        }
+    }
+
+    public entry fun unlike_quote(account: &signer, quote_owner: address, quote_id: u64) acquires Quotes {
+        let unliker_address = signer::address_of(account);
+        
+        let quotes = borrow_global_mut<Quotes>(quote_owner);
+
+        assert!(table::contains(&quotes.quote_list, quote_id), E_QUOTE_DOES_NOT_EXIST);
+
+        if (table::contains(&quotes.likes, quote_id)) {
+            let quote_likes = table::borrow_mut(&mut quotes.likes, quote_id);
+            
+            if (table::contains(quote_likes, unliker_address)) {
+                table::remove(quote_likes, unliker_address);
+                
+                let quote = table::borrow_mut(&mut quotes.quote_list, quote_id);
+                if (quote.likes > 0) {
+                    quote.likes = quote.likes - 1;
+                }
+            };
+        };
+    }
+
+   #[view]
+    public fun get_all_quotes(address: address): vector<Quote> acquires Quotes {
+        assert!(exists<Quotes>(address), 0);
+        let quotes = borrow_global<Quotes>(address);
+        let result = vector::empty<Quote>();
+        let i = 0;
+        while (i < quotes.next_id) {
+            if (table::contains(&quotes.quote_list, i)) {
+                let quote = table::borrow(&quotes.quote_list, i);
+                vector::push_back(&mut result, *quote);
+            };
+            i = i + 1;
+        };
+        result
+    }
 
     public entry fun add_quote(account: &signer, content: String, author: String, is_custom: bool) acquires Quotes {
         let address = signer::address_of(account);
@@ -83,46 +147,70 @@ public fun get_all_quotes(address: address): vector<Quote> acquires Quotes {
         let quote = table::borrow_mut(&mut quotes.quote_list, quote_id);
         quote.shared = true;
     }
-
-    public entry fun like_quote(account: &signer, quote_owner: address, quote_id: u64) acquires Quotes {
-        let liker_address = signer::address_of(account);
-        
-        let quotes = borrow_global_mut<Quotes>(quote_owner);
-
-        assert!(table::contains(&quotes.quote_list, quote_id), E_QUOTE_DOES_NOT_EXIST);
-
-        if (!table::contains(&quotes.likes, quote_id)) {
-            table::add(&mut quotes.likes, quote_id, table::new());
-        };
-
-        let quote_likes = table::borrow_mut(&mut quotes.likes, quote_id);
-
-        assert!(!table::contains(quote_likes, liker_address), E_ALREADY_LIKED);
-
-        table::add(quote_likes, liker_address, true);
-
-        let quote = table::borrow_mut(&mut quotes.quote_list, quote_id);
-        quote.likes = quote.likes + 1;
-    }
-
   
 
-     #[view]
-public fun search_quotes_by_address(searcher: address, target_address: address): vector<Quote> acquires Quotes {
-    assert!(exists<Quotes>(target_address), 0);
-    let quotes = borrow_global<Quotes>(target_address);
-    let result = vector::empty<Quote>();
-    let i = 0;
-    while (i < quotes.next_id) {
-        if (table::contains(&quotes.quote_list, i)) {
-            let quote = table::borrow(&quotes.quote_list, i);
-            if (quote.shared || searcher == target_address) {
+    #[view]
+    public fun search_quotes_by_address(searcher: address, target_address: address): vector<Quote> acquires Quotes {
+        if (!exists<Quotes>(target_address)) {
+            return vector::empty<Quote>()
+        };
+        let quotes = borrow_global<Quotes>(target_address);
+        let result = vector::empty<Quote>();
+        let i = 0;
+        while (i < quotes.next_id) {
+            if (table::contains(&quotes.quote_list, i)) {
+                let quote = table::borrow(&quotes.quote_list, i);
+                if (quote.shared || searcher == target_address) {
+                    vector::push_back(&mut result, *quote);
+                };
+            };
+            i = i + 1;
+        };
+        result
+    }
+
+    #[view]
+    public fun get_quotes_for_address(address: address): vector<Quote> acquires Quotes {
+        assert!(exists<Quotes>(address), 0);
+        let quotes = borrow_global<Quotes>(address);
+        let result = vector::empty<Quote>();
+        let i = 0;
+        while (i < quotes.next_id) {
+            if (table::contains(&quotes.quote_list, i)) {
+                let quote = table::borrow(&quotes.quote_list, i);
                 vector::push_back(&mut result, *quote);
             };
+            i = i + 1;
         };
-        i = i + 1;
+        result
+    }
+
+   public entry fun delete_quote(account: &signer, quote_id: u64) acquires Quotes {
+    let owner_address = signer::address_of(account);
+    
+    // Ensure the Quotes resource exists
+    assert!(exists<Quotes>(owner_address), 0); // Custom error code for non-existent Quotes resource
+    
+    let quotes = borrow_global_mut<Quotes>(owner_address);
+    
+    assert!(table::contains(&quotes.quote_list, quote_id), E_QUOTE_DOES_NOT_EXIST);
+    
+    // Ensure the quote belongs to the account trying to delete it
+    let quote = table::borrow(&quotes.quote_list, quote_id);
+    assert!(quote.owner == owner_address, 0); // Custom error code for unauthorized deletion
+    
+    // Remove the quote from the quote_list
+    let removed_quote = table::remove(&mut quotes.quote_list, quote_id);
+    
+    // Handle the likes table
+    if (table::contains(&quotes.likes, quote_id)) {
+        let likes_table = table::remove(&mut quotes.likes, quote_id);
+        // Destroy the empty likes table
+        table::destroy_empty(likes_table);
     };
-    result
+
+    // Explicitly drop the removed quote
+    let Quote { id: _, content: _, author: _, created_at: _, shared: _, likes: _, owner: _, is_custom: _ } = removed_quote;
 }
 
     #[view]

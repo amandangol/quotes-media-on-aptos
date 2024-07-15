@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { WalletSelector } from "@aptos-labs/wallet-adapter-ant-design";
-import { Layout, Button, Spin, message, List, Typography, Card, Row, Col, Input } from 'antd';
+import { Layout, Button, Spin, message, List, Typography, Card, Row, Col, Input, Tooltip, Modal } from 'antd';
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Network, Provider, Types } from "aptos";
-import { PlusOutlined, ShareAltOutlined, CopyOutlined, ReloadOutlined, LikeOutlined } from '@ant-design/icons';
+import { PlusOutlined, ReloadOutlined, LikeOutlined, SearchOutlined, ClearOutlined, CopyOutlined, DeleteOutlined } from '@ant-design/icons';
 import "@aptos-labs/wallet-adapter-ant-design/dist/index.css";
 import './styles.css';
 
@@ -18,7 +18,6 @@ interface Quote {
   content: string;
   author: string;
   created_at: string;
-  shared: boolean;
   likes: number;
   owner: string;
   is_custom: boolean;
@@ -31,112 +30,108 @@ const App: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(false);
   const [customQuote, setCustomQuote] = useState({ content: '', author: '' });
   const [searchAddress, setSearchAddress] = useState<string>('');
+  const [likedQuotes, setLikedQuotes] = useState<Set<string>>(new Set());
+  const [deletedQuoteIds, setDeletedQuoteIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (account) {
-      fetchOwnerQuotes();
+      fetchQuotes();
     }
   }, [account]);
 
-  const fetchOwnerQuotes = async () => {
+  const fetchQuotes = async (address: string = '') => {
     if (!account) return;
-
+  
     try {
       setLoading(true);
-      console.log("Fetching quotes for owner:", account.address);
+      console.log("Fetching quotes for address:", address || account.address);
       
       const result = await provider.view({
-        function: `${moduleAddress}::Quotes::get_quotes_for_address`,
+        function: `${moduleAddress}::Quotes::get_all_quotes`,
         type_arguments: [],
-        arguments: [account.address],
+        arguments: [address || account.address],
       });
-
-      console.log("Raw result from blockchain (owner quotes):", JSON.stringify(result, null, 2));
-
+  
+      console.log("Raw result from blockchain:", JSON.stringify(result, null, 2));
+  
       if (Array.isArray(result) && result.length > 0 && Array.isArray(result[0])) {
         const quotesData = result[0];
-        const formattedQuotes: Quote[] = quotesData.map((quoteData: any): Quote => ({
-          id: quoteData.id.toString(),
-          content: quoteData.content,
-          author: quoteData.author,
-          created_at: new Date(Number(quoteData.created_at) * 1000).toISOString(),
-          shared: Boolean(quoteData.shared),
-          likes: Number(quoteData.likes),
-          owner: quoteData.owner,
-          is_custom: Boolean(quoteData.is_custom),
-        }));
+        const formattedQuotes: Quote[] = quotesData
+          .filter((quoteData: any) => !deletedQuoteIds.has(quoteData.id.toString()))
+          .map((quoteData: any): Quote => ({
+            id: quoteData.id.toString(),
+            content: quoteData.content,
+            author: quoteData.author,
+            created_at: new Date(Number(quoteData.created_at) * 1000).toISOString(),
+            likes: Number(quoteData.likes),
+            owner: quoteData.owner,
+            is_custom: Boolean(quoteData.is_custom),
+          }));
         
-        console.log("Formatted owner quotes:", JSON.stringify(formattedQuotes, null, 2));
-
+        console.log("Formatted quotes:", JSON.stringify(formattedQuotes, null, 2));
+  
         const sortedQuotes = formattedQuotes.sort((a, b) => 
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
         );
         setQuotes(sortedQuotes);
-      } else {
-        console.log("No owner quotes found or invalid result structure");
-        setQuotes([]);
-      }
-    } catch (error) {
-      console.error("Error fetching owner quotes:", error);
-      message.error("Failed to fetch owner quotes. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const searchQuotesByAddress = async () => {
-    if (!account) return;
-
-    if (!searchAddress.trim()) {
-      await fetchOwnerQuotes();
-      return;
-    }
-
-    try {
-      setLoading(true);
-      console.log("Searching quotes for address:", searchAddress);
-      
-      const result = await provider.view({
-        function: `${moduleAddress}::Quotes::search_quotes_by_address`,
-        type_arguments: [],
-        arguments: [account.address, searchAddress],
-      });
-
-      console.log("Raw result from blockchain (search):", JSON.stringify(result, null, 2));
-
-      if (Array.isArray(result) && result.length > 0 && Array.isArray(result[0])) {
-        const quotesData = result[0];
-        const formattedQuotes: Quote[] = quotesData.map((quoteData: any): Quote => ({
-          id: quoteData.id.toString(),
-          content: quoteData.content,
-          author: quoteData.author,
-          created_at: new Date(Number(quoteData.created_at) * 1000).toISOString(),
-          shared: Boolean(quoteData.shared),
-          likes: Number(quoteData.likes),
-          owner: quoteData.owner,
-          is_custom: Boolean(quoteData.is_custom),
-        }));
+        const newLikedQuotes = new Set<string>();
+        sortedQuotes.forEach(quote => {
+          if (quote.likes > 0) {
+            newLikedQuotes.add(`${quote.owner}-${quote.id}`);
+          }
+        });
+        setLikedQuotes(newLikedQuotes);
         
-        console.log("Formatted search quotes:", JSON.stringify(formattedQuotes, null, 2));
-
-        const sortedQuotes = formattedQuotes.sort((a, b) => 
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-        );
-        setQuotes(sortedQuotes);
-        
-        if (formattedQuotes.length === 0) {
-          message.info("No quotes found for this address.");
-        } else {
+        if (address && formattedQuotes.length === 0) {
+          message.info("There's no quotes available for this address");
+        } else if (address) {
           message.success(`Found ${formattedQuotes.length} quotes for the address.`);
         }
       } else {
         console.log("No quotes found or invalid result structure");
         setQuotes([]);
-        message.info("No quotes found for this address.");
+        if (address) {
+          message.info("There's no quotes available for this address");
+        }
       }
     } catch (error) {
-      console.error("Error searching quotes:", error);
-      message.error("Failed to search quotes. Please try again.");
+      console.error("Error fetching quotes:", error);
+      // Check if the error is due to the Quotes resource not being initialized
+      if (error instanceof Error) {
+        if (error.message.includes("ABORTED")) {
+          setQuotes([]);
+          message.info("There's no quotes available for this address");
+        } else {
+          message.error("Failed to fetch quotes. Please try again.");
+        }
+      } else {
+        message.error("An unknown error occurred.");
+      }
+    
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const toggleLikeQuote = async (quoteOwnerId: string, quoteId: string) => {
+    if (!account) return;
+  
+    try {
+      setLoading(true);
+      const payload: Types.TransactionPayload = {
+        type: "entry_function_payload",
+        function: `${moduleAddress}::Quotes::toggle_like_quote`,
+        type_arguments: [],
+        arguments: [quoteOwnerId, quoteId],
+      };
+  
+      const response = await signAndSubmitTransaction(payload);
+      await provider.waitForTransaction(response.hash);
+      message.success("Quote like toggled successfully!");
+      fetchQuotes(searchAddress || account.address);
+    } catch (error) {
+      console.error("Error toggling quote like:", error);
+      message.error("Failed to toggle quote like. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -166,58 +161,10 @@ const App: React.FC = () => {
       } else {
         setRandomQuote(null);
       }
-      await fetchOwnerQuotes();
+      await fetchQuotes();
     } catch (error) {
       console.error("Error adding quote:", error);
       message.error("Failed to add quote. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const shareQuote = async (quoteId: string) => {
-    if (!account) return;
-
-    try {
-      setLoading(true);
-      const payload: Types.TransactionPayload = {
-        type: "entry_function_payload",
-        function: `${moduleAddress}::Quotes::share_quote`,
-        type_arguments: [],
-        arguments: [quoteId],
-      };
-
-      const response = await signAndSubmitTransaction(payload);
-      await provider.waitForTransaction(response.hash);
-      message.success("Quote shared successfully!");
-      fetchOwnerQuotes();
-    } catch (error) {
-      console.error("Error sharing quote:", error);
-      message.error("Failed to share quote. Please try again.");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const likeQuote = async (quoteOwnerId: string, quoteId: string) => {
-    if (!account) return;
-
-    try {
-      setLoading(true);
-      const payload: Types.TransactionPayload = {
-        type: "entry_function_payload",
-        function: `${moduleAddress}::Quotes::like_quote`,
-        type_arguments: [],
-        arguments: [quoteOwnerId, quoteId],
-      };
-
-      const response = await signAndSubmitTransaction(payload);
-      await provider.waitForTransaction(response.hash);
-      message.success("Quote liked successfully!");
-      searchQuotesByAddress(); // Refresh the current view
-    } catch (error) {
-      console.error("Error liking quote:", error);
-      message.error("Failed to like quote. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -236,7 +183,6 @@ const App: React.FC = () => {
         content: data.content,
         author: data.author,
         created_at: new Date().toISOString(),
-        shared: false,
         likes: 0,
         owner: account!.address,
         is_custom: false,
@@ -249,8 +195,12 @@ const App: React.FC = () => {
     }
   };
 
-  const getShareableLink = (quoteId: string) => {
-    return `${window.location.origin}/quote/${account?.address}/${quoteId}`;
+  const deleteQuote = (quoteId: string) => {
+    if (!account) return;
+
+    setQuotes(prevQuotes => prevQuotes.filter(q => q.id !== quoteId));
+    setDeletedQuoteIds(prev => new Set(prev).add(quoteId));
+    message.success("Quote removed from the list.");
   };
 
   return (
@@ -312,7 +262,6 @@ const App: React.FC = () => {
                     ...customQuote,
                     id: '',
                     created_at: new Date().toISOString(),
-                    shared: false,
                     likes: 0,
                     owner: account!.address,
                     is_custom: true,
@@ -331,68 +280,101 @@ const App: React.FC = () => {
                   placeholder="Enter address to search"
                   value={searchAddress}
                   onChange={(e) => setSearchAddress(e.target.value)}
+                  onPressEnter={() => fetchQuotes(searchAddress)}
                   style={{ marginBottom: '10px' }}
+                  suffix={
+                    <Tooltip title={searchAddress ? "Search" : "Clear"}>
+                      <Button
+                        type="primary"
+                        icon={searchAddress ? <SearchOutlined />  : <ClearOutlined />}
+                        onClick={() => {
+                          if (searchAddress) {
+                            fetchQuotes(searchAddress);
+                          } else {
+                            setSearchAddress('');
+                            fetchQuotes(account?.address || '');
+                          }
+                        }}
+                        disabled={!account}
+                      />
+                    </Tooltip>
+                  }
                 />
                 <Button
                   type="primary"
-                  onClick={searchQuotesByAddress}
+                  icon={<ReloadOutlined />}
+                  onClick={() => fetchQuotes(searchAddress || account?.address)}
                   disabled={!account}
+                  style={{ marginLeft: '10px' }}
                 >
-                  {searchAddress.trim() ? 'Search Quotes' : 'Show My Quotes'}
+                  Refresh Quotes
                 </Button>
               </Card>
             </Col>
           </Row>
           <Card title={searchAddress ? `Quotes for ${searchAddress}` : "My Quotes"} style={{ marginTop: '16px' }}>
-            <List
-              itemLayout="vertical"
-              dataSource={quotes}
-              renderItem={(quote) => (
-                <List.Item
-                  actions={[
-                    <Button
-                      icon={<LikeOutlined />}
-                      onClick={() => likeQuote(quote.owner, quote.id)}
-                    >
-                      Like ({quote.likes})
-                    </Button>,
-                    <Button 
-                      type={quote.shared ? 'default' : 'primary'}
-                      icon={<ShareAltOutlined />}
-                      onClick={() => shareQuote(quote.id)} 
-                      disabled={quote.shared || quote.owner !== account?.address}
-                    >
-                      {quote.shared ? 'Shared' : 'Share'}
-                    </Button>,
-                    quote.shared && (
-                      <Button 
-                        icon={<CopyOutlined />}
-                        onClick={() => {
-                          navigator.clipboard.writeText(getShareableLink(quote.id));
-                          message.success('Shareable link copied to clipboard!');
-                        }}
-                      >
-                        Copy Link
-                      </Button>
-                    )
-                  ]}
-                >
-                  <List.Item.Meta
-                    title={<Text strong>"{quote.content}"</Text>}
-                    description={
-                      <>
-                        <Text italic>- {quote.author}</Text>
-                        <br />
-                        <Text type="secondary">Added at: {new Date(quote.created_at).toLocaleString()}</Text>
-                        <br />
-                        <Text type="secondary">Owner: {quote.owner}</Text>
-                      </>
-                    }
-                  />
-                </List.Item>
-              )}
-            />
-          </Card>
+  {quotes.length === 0 && (
+    <Text>There's no quotes available for this address</Text>
+  )}
+  {quotes.length > 0 && (
+    <List
+      itemLayout="vertical"
+      dataSource={quotes}
+      renderItem={(quote) => (
+        <List.Item
+          actions={[
+            <Button
+              icon={<LikeOutlined />}
+              onClick={() => toggleLikeQuote(quote.owner, quote.id)}
+            >
+              {likedQuotes.has(`${quote.owner}-${quote.id}`) ? 'Unlike' : 'Like'} ({quote.likes})
+            </Button>,
+            <Button
+              icon={<CopyOutlined />}
+              onClick={() => {
+                navigator.clipboard.writeText(`"${quote.content}" - ${quote.author}`);
+                message.success('Quote copied to clipboard!');
+              }}
+            >
+              Copy Quote
+            </Button>,
+            account?.address === quote.owner && (
+              <Button
+                danger
+                icon={<DeleteOutlined />}
+                onClick={() => {
+                  Modal.confirm({
+                    title: 'Are you sure you want to remove this quote?',
+                    content: 'This will only remove the quote from your local list.',
+                    onOk: () => deleteQuote(quote.id),
+                  });
+                }}
+              >
+                Remove
+              </Button>
+            ),
+          ]}
+        >
+          <List.Item.Meta
+            title={<Text strong>"{quote.content}"</Text>}
+            description={
+              <>
+                <Text italic>- {quote.author}</Text>
+                <br />
+                <Text type="secondary">Added at: {new Date(quote.created_at).toLocaleString()}</Text>
+                <br />
+                <Text type="secondary">Owner: {quote.owner}</Text>
+                <br />
+                <Text type="secondary">{quote.is_custom ? 'Custom Quote' : 'API Quote'}</Text>
+              </>
+            }
+          />
+        </List.Item>
+      )}
+    />
+  )}
+</Card>
+
         </Spin>
       </Content>
       <Footer style={{ textAlign: 'center' }}>Quote Manager ©{new Date().getFullYear()} Created with Aptos</Footer>

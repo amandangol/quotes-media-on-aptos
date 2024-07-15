@@ -8,7 +8,7 @@ import { LikeOutlined, HomeOutlined } from '@ant-design/icons';
 const { Title, Text } = Typography;
 
 const provider = new Provider(Network.TESTNET);
-const moduleAddress = "0x34d6b6437bfca564420f3d609e66dc3e4dc625fc1a390efdd55abc1940177819";
+const moduleAddress = "0x6fb9b7e3a84f9ec3e227d90e499d1832d8ee12350d82572913546ca8bd79d629";
 
 interface Quote {
   id: string;
