@@ -91,3 +91,136 @@
 .ant-space-vertical {
   width: 100%;
 }
+
+.centered-space {
+  width: 100%;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(to right, #3498db, #2ecc71);
+}
+
+.styled-card {
+  width: 400px;
+  padding: 40px;
+  text-align: center;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.wallet-gate-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  width: 100vw;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.wallet-gate-content {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 20px;
+  padding: 40px;
+  box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+  backdrop-filter: blur(4px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  text-align: center;
+  max-width: 80%;
+  width: 400px;
+}
+
+.logo-container {
+  margin-bottom: 20px;
+}
+
+.logo {
+  width: 100px;
+  height: auto;
+}
+
+.wallet-gate-title {
+  color: #fff !important;
+  font-size: 2.5rem !important;
+  margin-bottom: 20px !important;
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.wallet-gate-text {
+  color: #fff;
+  font-size: 1.1rem;
+  margin-bottom: 30px;
+  line-height: 1.5;
+}
+
+.wallet-selector-container {
+  margin-top: 20px;
+}
+
+
+.ant-btn:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 7px 14px rgba(50, 50, 93, 0.1), 0 3px 6px rgba(0, 0, 0, 0.08);
+}
+.logo {
+  width: 150px; 
+  height: auto;
+}
+
+.built-on-aptos {
+  position: absolute;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(5px);
+  border-radius: 20px;
+  padding: 10px 20px;
+}
+
+.aptos-logo {
+  width: 24px;
+  height: 24px;
+  margin-right: 10px;
+}
+
+.built-on-text {
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+@media (max-width: 600px) {
+  .built-on-aptos {
+    bottom: 10px;
+    padding: 8px 16px;
+  }
+
+  .aptos-logo {
+    width: 20px;
+    height: 20px;
+  }
+
+  .built-on-text {
+    font-size: 0.8rem;
+  }
+}
+
+@media (max-width: 600px) {
+  .wallet-gate-content {
+    width: 90%;
+    padding: 30px;
+  }
+
+  .wallet-gate-title {
+    font-size: 2rem !important;
+  }
+
+  .wallet-gate-text {
+    font-size: 1rem;
+  }
+}

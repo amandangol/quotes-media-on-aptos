@@ -3,6 +3,8 @@ import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { Network, Provider, Types } from "aptos";
 import { message } from 'antd';
 import { useWalletStatus } from '../components/useWalletStatus';
+import WalletGate from '../components/WalletGate'; // Import the new component
+
 
 
 const provider = new Provider(Network.TESTNET);
@@ -302,7 +304,7 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       initializationAttempted,
       initializeQuotes,
     }}>
-      {children}
+      <WalletGate>{children}</WalletGate>
     </QuoteContext.Provider>
   );
 };
