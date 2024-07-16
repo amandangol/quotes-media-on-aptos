@@ -95,6 +95,4 @@ Your dApp is now connected to your deployed smart contract on the Aptos testnet.
 - Like/unlike quotes
 - Search for quotes by user address
 
-## License
 
-[MIT License](LICENSE)
