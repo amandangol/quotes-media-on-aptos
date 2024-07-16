@@ -191,7 +191,7 @@ export const QuoteProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }
   };
 
-  const toggleLikeQuote = async (quoteOwnerId: string, quoteId: string) => {
+  const toggleLikeQuote = async (quoteOwnerId: string, quoteId: string,) => {
     if (!account) return;
   
     try {

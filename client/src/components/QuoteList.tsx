@@ -24,7 +24,7 @@ const QuoteList: React.FC = () => {
               actions={[
                 <Button
                 icon={<LikeOutlined />}
-                onClick={() => toggleLikeQuote(quote.owner, quote.id)}
+                onClick={() => toggleLikeQuote(quote.owner, quote.id,)}
                 className="quote-action-button"
               >
                     {quote.liked_by.includes(account?.address || '') ? 'Unlike' : 'Like'} ({quote.likes})
