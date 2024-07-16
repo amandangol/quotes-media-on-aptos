@@ -6,7 +6,7 @@ import { useWalletStatus } from '../components/useWalletStatus';
 
 
 const provider = new Provider(Network.TESTNET);
-const moduleAddress = "0x3616a9d7de3093cf1f0907b1281e7f4f41bf4dd8c538573673a332366bb5c260";
+const moduleAddress = process.env.REACT_APP_MODULE_ADDRESS;
 
 interface Quote {
   id: string;

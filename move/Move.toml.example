@@ -1,9 +1,11 @@
 [package]
 name = 'Quotes'
 version = '1.0.0'
+
 [dependencies.AptosFramework]
 git = 'https://github.com/aptos-labs/aptos-core.git'
 rev = 'main'
 subdir = 'aptos-move/framework/aptos-framework'
+
 [addresses]
-my_addr ='0x0540e85ee1f0fd7a798783546b7c32058656f2b8c2100aa0d4dea37ec803d4d6'
+my_addr = '_YOUR_CONTRACT_ADDRESS_HERE_'

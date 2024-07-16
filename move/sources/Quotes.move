@@ -1,4 +1,4 @@
-module 0x3616a9d7de3093cf1f0907b1281e7f4f41bf4dd8c538573673a332366bb5c260::Quotes {
+module my_addr::Quotes {
     use std::signer;
     use std::string::String;
     use aptos_std::table::{Self, Table};
@@ -13,7 +13,6 @@ module 0x3616a9d7de3093cf1f0907b1281e7f4f41bf4dd8c538573673a332366bb5c260::Quote
         content: String,
         author: String,
         created_at: u64,
-        shared: bool,
         likes: u64,
         owner: address,
         is_custom: bool,
@@ -86,7 +85,6 @@ module 0x3616a9d7de3093cf1f0907b1281e7f4f41bf4dd8c538573673a332366bb5c260::Quote
         content,
         author,
         created_at,
-        shared: false,
         likes: 0,
         owner: address,
         is_custom,
@@ -96,16 +94,6 @@ module 0x3616a9d7de3093cf1f0907b1281e7f4f41bf4dd8c538573673a332366bb5c260::Quote
     quotes.next_id = quotes.next_id + 1;
 }
 
-    public entry fun share_quote(account: &signer, quote_id: u64) acquires Quotes {
-        let address = signer::address_of(account);
-        assert!(exists<Quotes>(address), 0);
-
-        let quotes = borrow_global_mut<Quotes>(address);
-        assert!(table::contains(&quotes.quote_list, quote_id), E_QUOTE_DOES_NOT_EXIST);
-
-        let quote = table::borrow_mut(&mut quotes.quote_list, quote_id);
-        quote.shared = true;
-    }
   
 
     #[view]
@@ -119,7 +107,7 @@ module 0x3616a9d7de3093cf1f0907b1281e7f4f41bf4dd8c538573673a332366bb5c260::Quote
         while (i < quotes.next_id) {
             if (table::contains(&quotes.quote_list, i)) {
                 let quote = table::borrow(&quotes.quote_list, i);
-                if (quote.shared || searcher == target_address) {
+                if (searcher == target_address) {
                     vector::push_back(&mut result, *quote);
                 };
             };

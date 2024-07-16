@@ -47,7 +47,7 @@ const QuoteList: React.FC = () => {
                     onClick={() => {
                       Modal.confirm({
                         title: 'Are you sure you want to remove this quote?',
-                        content: 'This will only remove the quote from your local list.',
+                        content: 'This will only remove the quote from your list.',
                         onOk: () => deleteQuote(quote.id),
                       });
                     }}
@@ -65,7 +65,7 @@ const QuoteList: React.FC = () => {
                   <>
                     <Text italic>- {quote.author}</Text>
                     <br />
-                    <Text type="secondary">Added at: {new Date(quote.created_at).toLocaleString()}</Text>
+                    <Text type="secondary">{new Date(quote.created_at).toLocaleString()}</Text>
                     <br />
                     <Text type="secondary">Owner: {quote.owner}</Text>
                     <br />

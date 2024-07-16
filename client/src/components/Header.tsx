@@ -1,15 +1,16 @@
-import React, { useEffect } from 'react';
-import { Layout, Row, Col, Typography, Button, message } from 'antd';
+import React, { useEffect, useState } from 'react';
+import { Layout, Row, Col, Typography, Button, message, Modal, Tooltip } from 'antd';
 import { WalletSelector } from "@aptos-labs/wallet-adapter-ant-design";
-import { CopyOutlined } from '@ant-design/icons';
+import { CopyOutlined, InfoCircleOutlined } from '@ant-design/icons';
 import { useWallet } from "@aptos-labs/wallet-adapter-react";
 import { NetworkName } from "@aptos-labs/wallet-adapter-core";
 
 const { Header: AntHeader } = Layout;
-const { Title, Text } = Typography;
+const { Title, Text, Paragraph } = Typography;
 
 const Header: React.FC = () => {
-  const { account, network } = useWallet();
+  const { account, network, connected } = useWallet();
+  const [isModalVisible, setIsModalVisible] = useState(false);
 
   const copyAddress = () => {
     if (account?.address) {
@@ -19,35 +20,79 @@ const Header: React.FC = () => {
     }
   };
 
+  useEffect(() => {
+    if (connected) {
+      if (network?.name !== NetworkName.Testnet) {
+        setIsModalVisible(true);
+      } else {
+       
+      }
+    }
+  }, [connected, network]);
+
+  const handleOk = () => {
+    setIsModalVisible(false);
+  };
+
+  const tooltipContent = (
+    <div>
+      
+        Please ensure your wallet is connected to the Aptos Testnet.
+      
+      If you haven't already, you may need to fund your wallet using the Aptos Testnet Faucet on Petra Wallet extension.
+
+    </div>
+  );
 
   return (
-    <AntHeader className="header">
-      <Row justify="space-between" align="middle">
-        <Col>
-          <Title level={2} className="header-title">Quote Manager</Title>
-        </Col>
-        <Col>
-          <Row gutter={16} align="middle">
-            {account && (
+    <>
+      <AntHeader className="header">
+        <Row justify="space-between" align="middle">
+          <Col>
+            <Title level={2} className="header-title">QuoteSphere</Title>
+          </Col>
+          <Col>
+            <Row gutter={16} align="middle">
               <Col>
-                <Text style={{ marginRight: '8px' }}>
-                  {`${account.address.slice(0, 6)}...${account.address.slice(-4)}`}
-                </Text>
-                <Button 
-                  icon={<CopyOutlined />} 
-                  onClick={copyAddress}
-                  size="small"
-                >
-                </Button>
+                <Tooltip title={tooltipContent} placement="bottomRight">
+                  <InfoCircleOutlined style={{ fontSize: '20px', color: 'white', cursor: 'pointer' }} />
+                </Tooltip>
               </Col>
-            )}
-            <Col>
-              <WalletSelector />
-            </Col>
-          </Row>
-        </Col>
-      </Row>
-    </AntHeader>
+              {account && (
+                <Col>
+                 
+                  <Button 
+                    icon={<CopyOutlined />} 
+                    onClick={copyAddress}
+                    size="small"
+                  >
+                  </Button>
+                </Col>
+              )}
+              <Col>
+                <WalletSelector />
+              </Col>
+            </Row>
+          </Col>
+        </Row>
+      </AntHeader>
+      <Modal
+        title="Wallet Connection Reminder"
+        visible={isModalVisible}
+        onOk={handleOk}
+        onCancel={handleOk}
+      >
+        <Paragraph>
+          Please ensure your wallet is connected to the Aptos Testnet. 
+          If you haven't already, you may need to fund your wallet using the Aptos Testnet Faucet on Petra Wallet extension.
+        </Paragraph>
+        {/* <Paragraph>
+          <a href="https://aptoslabs.com/testnet-faucet" target="_blank" rel="noopener noreferrer">
+            Visit Aptos Testnet Faucet
+          </a>
+        </Paragraph> */}
+      </Modal>
+    </>
   );
 };
 
