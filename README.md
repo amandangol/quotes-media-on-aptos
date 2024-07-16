@@ -22,6 +22,7 @@ The primary purpose of QuoteSphere is to create a decentralized platform where u
 ## Tech Stack
 
 - **Blockchain**: Aptos
+- **Blockchain Network**: Aptos Testnet Network
 - **Smart Contract Language**: Move
 - **Frontend Framework**: React
 - **State Management**: React Context API
